@@ -294,10 +294,9 @@ const CatalogManagement: React.FC = () => {
 
   const buildCategoryTree = async (provider: Provider): Promise<ImportCategory[]> => {
     setImportLoading(true);
-    setImportProgress(['🔄 بدء بناء الشجرة...']);
+    setImportProgress([`🌳 بدء بناء شجرة التصنيفات الكاملة للمزود ${provider.name}...`]);
 
     try {
-      // Get main categories
       setImportProgress(prev => [...prev, '📂 جلب الفئات الرئيسية...']);
       const mainResponse = await fetch('/api/admin/providers/fetch-categories', {
         method: 'POST',
@@ -306,10 +305,16 @@ const CatalogManagement: React.FC = () => {
       });
 
       if (!mainResponse.ok) {
-        throw new Error('فشل في جلب الفئات الرئيسية');
+        const errorData = await mainResponse.json();
+        throw new Error(errorData.error || 'فشل في جلب الفئات الرئيسية');
       }
 
       const mainCategories = await mainResponse.json();
+
+      if (!Array.isArray(mainCategories)) {
+        throw new Error('البيانات المستلمة غير صحيحة. يرجى التحقق من رابط API والـ Token');
+      }
+
       setImportProgress(prev => [...prev, `✅ تم جلب ${mainCategories.length} فئة رئيسية`]);
 
       // Build complete tree recursively
@@ -323,8 +328,9 @@ const CatalogManagement: React.FC = () => {
       setImportProgress(prev => [...prev, '🎉 تم بناء الشجرة الكاملة بنجاح!']);
       return tree;
 
-    } catch (error) {
-      setImportProgress(prev => [...prev, `❌ خطأ: ${error}`]);
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      setImportProgress(prev => [...prev, `❌ خطأ في بناء الشجرة: ${errorMessage}`]);
       throw error;
     } finally {
       setImportLoading(false);
@@ -383,21 +389,24 @@ const CatalogManagement: React.FC = () => {
 
       return node;
 
-    } catch (error) {
-      setImportProgress(prev => [...prev, `${indent}❌ خطأ في معالجة ${category.name}: ${error}`]);
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      setImportProgress(prev => [...prev, `${indent}❌ خطأ في معالجة ${category.name}: ${errorMessage}`]);
       throw error;
     }
   };
 
   const handleProviderSelect = async (provider: Provider) => {
     setSelectedProvider(provider);
-    
+
     try {
       const tree = await buildCategoryTree(provider);
       setImportCategories(tree);
       setImportStep('categories');
-    } catch (error) {
-      console.error('Error building tree:', error);
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      console.error('Error building tree:', errorMessage);
+      alert(`حدث خطأ في بناء شجرة التصنيفات:\n${errorMessage}\n\nيرجى التحقق من:\n1. رابط API صحيح\n2. Token صحيح وفعال\n3. اتصال الإنترنت`);
     }
   };
 
@@ -437,8 +446,9 @@ const CatalogManagement: React.FC = () => {
         const error = await response.json();
         throw new Error(error.error);
       }
-    } catch (error) {
-      setImportProgress(prev => [...prev, `❌ خطأ في الاستيراد: ${error}`]);
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      setImportProgress(prev => [...prev, `❌ خطأ في الاستيراد: ${errorMessage}`]);
     } finally {
       setImportLoading(false);
     }

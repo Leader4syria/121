@@ -911,30 +911,41 @@ app.post('/api/admin/providers/fetch-categories', adminAuthMiddleware, async (c)
   try {
     const { providerId } = await c.req.json();
     const db = c.env.DB;
-    
+
     const provider = await db.prepare(`
       SELECT * FROM service_providers WHERE id = ?
     `).bind(providerId).first();
-    
+
     if (!provider) {
       return c.json({ error: 'Provider not found' }, 404);
     }
-    
+
     const response = await fetch((provider as any).api_url + '/client/api/content/0', {
       headers: {
-        'api-token': (provider as any).api_token
+        'api-token': (provider as any).api_token,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
     });
-    
+
     if (response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text.substring(0, 200));
+        return c.json({ error: 'Invalid API response format (expected JSON, got HTML)' }, 400);
+      }
+
       const data: any = await response.json();
       return c.json(data.categories || []);
     } else {
-      return c.json({ error: 'Failed to fetch categories' }, 400);
+      const errorText = await response.text();
+      console.error('API error:', errorText.substring(0, 200));
+      return c.json({ error: 'Failed to fetch categories from provider' }, 400);
     }
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return c.json({ error: 'Error fetching categories' }, 500);
+    return c.json({ error: `Error fetching categories: ${error}` }, 500);
   }
 });
 
@@ -943,33 +954,44 @@ app.post('/api/admin/providers/fetch-category-content', adminAuthMiddleware, asy
   try {
     const { providerId, categoryId } = await c.req.json();
     const db = c.env.DB;
-    
+
     const provider = await db.prepare(`
       SELECT * FROM service_providers WHERE id = ?
     `).bind(providerId).first();
-    
+
     if (!provider) {
       return c.json({ error: 'Provider not found' }, 404);
     }
-    
+
     const response = await fetch((provider as any).api_url + '/client/api/content/' + categoryId, {
       headers: {
-        'api-token': (provider as any).api_token
+        'api-token': (provider as any).api_token,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
     });
-    
+
     if (response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response for category', categoryId, ':', text.substring(0, 200));
+        return c.json({ error: 'Invalid API response format (expected JSON, got HTML)' }, 400);
+      }
+
       const data: any = await response.json();
       return c.json({
         categories: data.categories || [],
         products: data.products || []
       });
     } else {
-      return c.json({ error: 'Failed to fetch category content' }, 400);
+      const errorText = await response.text();
+      console.error('API error for category', categoryId, ':', errorText.substring(0, 200));
+      return c.json({ error: 'Failed to fetch category content from provider' }, 400);
     }
   } catch (error) {
     console.error('Error fetching category content:', error);
-    return c.json({ error: 'Error fetching category content' }, 500);
+    return c.json({ error: `Error fetching category content: ${error}` }, 500);
   }
 });
 

@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { 
-  FolderOpen, Package, Plus, Search, Upload, 
-  Edit3, Trash2, ChevronRight, ChevronDown, Eye, EyeOff,
-  RefreshCw, X
-} from 'lucide-react';
+import { FolderOpen, Package, Plus, Search, Upload, LocationEdit as Edit3, Trash2, ChevronRight, ChevronDown, Eye, EyeOff, RefreshCw, X } from 'lucide-react';
 
 interface Category {
   id: number;
